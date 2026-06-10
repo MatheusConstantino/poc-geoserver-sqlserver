@@ -8,12 +8,13 @@ on:
         description: "Scenarios to run (all, B01, B07, ...)"
         required: false
         default: "all"
-  # Also runs on pushes to main that touch benchmark scenarios
+  # Also runs on pushes to master that touch benchmark scenarios or runner
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "benchmark/scenarios.json"
-      - "api/src/**"
+      - "benchmark/runner.ts"
+      - "api/src/services/benchmark.service.ts"
 
 jobs:
   benchmark:
@@ -29,64 +30,53 @@ jobs:
       - name: Setup environment
         run: cp .env.example .env
 
-      - name: Start stack (databases + API only)
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: benchmark/package.json
+
+      - name: Install runner deps
+        working-directory: ./benchmark
+        run: npm install
+
+      - name: Start stack (databases + seed + API)
         run: |
           docker compose up -d sqlserver postgis
           echo "Waiting for databases to be healthy..."
-          timeout 120 bash -c 'until docker compose ps --format json | python3 -c "
-          import sys, json
-          services = [json.loads(l) for l in sys.stdin if l.strip()]
-          dbs = [s for s in services if s[\"Service\"] in [\"sqlserver\",\"postgis\"]]
-          all_healthy = all(s.get(\"Health\",\"\") == \"healthy\" for s in dbs)
-          sys.exit(0 if all_healthy else 1)
-          "; do sleep 5; done'
+          timeout 180 bash -c \
+            'until [ "$(docker inspect --format="{{.State.Health.Status}}" $(docker compose ps -q sqlserver))" = "healthy" ] && \
+                   [ "$(docker inspect --format="{{.State.Health.Status}}" $(docker compose ps -q postgis))"   = "healthy" ]; \
+             do sleep 5; done'
+          docker compose up -d sqlserver-seed
+          echo "Waiting for seed to complete..."
+          timeout 300 bash -c \
+            'until [ "$(docker compose ps sqlserver-seed --format json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0][\"State\"] if d else \"running\")" 2>/dev/null)" = "exited" ]; \
+             do sleep 10; done' || true
           docker compose up -d api
-          sleep 15
+          sleep 10
 
       - name: Wait for API health
         run: |
-          timeout 60 bash -c 'until curl -sf http://localhost:3000/health; do sleep 3; done'
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/health | grep -q "healthy\|degraded"; do sleep 3; done'
 
-      - name: Run benchmarks
-        id: benchmark
+      - name: Run benchmark runner
+        working-directory: ./benchmark
         run: |
-          RESULT=$(curl -sf -X POST http://localhost:3000/benchmark/run \
-            -H "Content-Type: application/json" \
-            -d "{\"scenarios\": \"${{ github.event.inputs.scenarios || 'all' }}\", \"databases\": [\"sqlserver\", \"postgis\"]}")
-          echo "$RESULT" > /tmp/benchmark-result.json
-          echo "result=$RESULT" >> $GITHUB_OUTPUT
-
-      - name: Generate markdown report
-        id: report
-        run: |
-          node - <<'SCRIPT'
-          const fs = require('fs');
-          const result = JSON.parse(fs.readFileSync('/tmp/benchmark-result.json', 'utf8'));
-          const date = new Date().toISOString().split('T')[0];
-
-          let table = `# Benchmark Report — ${date}\n\n`;
-          table += `| Scenario | Description | SQL Server p50 | SQL Server p95 | PostGIS p50 | PostGIS p95 | Winner |\n`;
-          table += `|----------|-------------|:-------------:|:-------------:|:-----------:|:-----------:|:------:|\n`;
-
-          for (const [id, data] of Object.entries(result.scenarios || {})) {
-            const sql = data.sqlserver || {};
-            const pg = data.postgis || {};
-            const winner = (sql.p95 || Infinity) < (pg.p95 || Infinity) ? 'SQL Server' : 'PostGIS';
-            table += `| ${id} | ${data.description || ''} | ${sql.p50 || '-'}ms | ${sql.p95 || '-'}ms | ${pg.p50 || '-'}ms | ${pg.p95 || '-'}ms | ${winner} |\n`;
-          }
-
-          const outputPath = `benchmark/results/${date}.md`;
-          fs.writeFileSync(outputPath, table);
-          console.log('Report written to', outputPath);
-          SCRIPT
+          npx tsx runner.ts \
+            --api http://localhost:3000 \
+            --out ./results \
+            --warmup 2 \
+            --iters 5 \
+            --scenarios "${{ github.event.inputs.scenarios || 'all' }}"
 
       - name: Commit benchmark results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          DATE=$(date +%Y-%m-%d)
-          git add benchmark/results/${DATE}.md
-          git commit -m "perf: add benchmark results ${DATE}" || echo "No changes to commit"
+          git add benchmark/results/
+          git commit -m "perf(benchmark): add results $(date +%Y-%m-%d)" || echo "No changes to commit"
           git push
 
       - name: Tear down stack

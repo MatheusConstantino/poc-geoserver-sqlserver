@@ -1,0 +1,16 @@
+{
+  "name": "poc-benchmark-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "tsx runner.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.0"
+  }
+}
