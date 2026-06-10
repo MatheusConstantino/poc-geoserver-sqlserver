@@ -1,0 +1,24 @@
+# =============================================================================
+# Seed Runner — ephemeral container that generates and inserts synthetic data
+# Runs once on `docker compose up`, exits after seeding both databases.
+# =============================================================================
+
+FROM node:20-alpine AS base
+
+# Install dependencies for native modules (mssql uses native bindings)
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+WORKDIR /app/seed
+
+# Copy package files first (Docker layer caching — only reinstalls on dep changes)
+COPY seed/package*.json ./
+RUN npm ci --ignore-scripts
+
+# Copy source
+COPY seed/ ./
+
+# Run type check at build time (catches errors before runtime)
+RUN npm run typecheck
+
+# Default: seed both databases
+CMD ["npm", "run", "generate"]
