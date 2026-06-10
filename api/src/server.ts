@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import { healthRoutes }         from './routes/health.js'
 import { inconsistenciasRoutes } from './routes/inconsistencias.js'
 import { benchmarkRoutes }       from './routes/benchmark.js'
+import { aiRoutes }              from './routes/ai.js'
 
 const app = Fastify({
   logger: {
@@ -13,6 +14,7 @@ const app = Fastify({
 await app.register(healthRoutes)
 await app.register(inconsistenciasRoutes)
 await app.register(benchmarkRoutes)
+await app.register(aiRoutes)
 
 // Start
 const host = process.env.API_HOST ?? '0.0.0.0'
