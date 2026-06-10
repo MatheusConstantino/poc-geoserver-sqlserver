@@ -95,9 +95,23 @@ jobs:
       - name: Create .env from example
         run: cp .env.example .env
 
-      - name: Start API stack (SQL Server + PostGIS + API only — no GeoServer, no seed)
-        run: docker compose up api -d --wait --wait-timeout 300
+      - name: Start databases and wait for healthy
+        run: docker compose up sqlserver postgis -d --wait --wait-timeout 300
         timeout-minutes: 8
+
+      - name: Initialize SQL Server schema (tiny dataset — just enough to create geo_poc)
+        run: |
+          docker compose run --rm \
+            -e SEED_POINTS_COUNT=10 \
+            -e SEED_LINES_COUNT=10 \
+            -e SEED_POLYGONS_COUNT=5 \
+            -e SEED_INCONSISTENCIES_COUNT=5 \
+            sqlserver-seed
+        timeout-minutes: 3
+
+      - name: Start API and wait for healthy
+        run: docker compose up api -d --wait --wait-timeout 120
+        timeout-minutes: 4
 
       - name: GET /health must return 200
         run: |
