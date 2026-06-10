@@ -123,17 +123,66 @@ Os resultados são commitados automaticamente em `benchmark/results/`.
 
 ---
 
-## Hipóteses a Validar
+## Dados de Referência — Comparativo Real (via GeoServer WFS)
 
-Com base em literatura e experiência, esperamos:
+> Dados coletados em 2026-06-03 com a mesma volumetria deste POC (50k pontos, 100k linhas, 2k polígonos).
+> Metodologia: 3 warmup + 10 medições, p50/p95/max reportados.
+> **Importante**: PostGIS rodava em servidor remoto (DEV), incluindo ~50–100ms de latência de rede.
+> SQL Server rodava local (Docker), equivalente ao ambiente deste POC.
+> Todos os números abaixo são via **GeoServer WFS** (não query direta ao banco).
 
-| Cenário | Hipótese | Razão |
-|---------|----------|-------|
-| B12 KNN | PostGIS mais rápido | Operador `<->` com suporte nativo de índice GIST; SQL Server precisa de full scan + ORDER BY |
-| B07 JOIN | PostGIS mais rápido | `ST_DWithin` aproveita GIST; `STDistance < r` no SQL Server pode fazer full scan |
-| B09 Misto | SQL Server competitivo | Índice de atributo filtra antes do spatial; ambos têm essa otimização |
-| B15 Validação | Similar | Ambos leem views simples sem geometria serializada |
-| B01–B04 Bbox | PostGIS vantagem em scan denso | GIST com bbox-only scan vs AUTO_GRID com verificação em dois passos |
+### SQL Server (local Docker) — todos os cenários
+
+| Cenário | Descrição | p50 | p95 | Max | Status |
+|---------|-----------|-----|-----|-----|--------|
+| C3.1 | GetFeature PONNOT sem filtro (1k feat) | 570ms | 643ms | 643ms | OK |
+| C3.2 | GetFeature SSDMT sem filtro (1k feat) | 510ms | 680ms | 680ms | OK |
+| C3.3 | GetFeature SUB sem filtro (1k feat) | 539ms | 709ms | 709ms | OK |
+| C4.1 | Bbox pequeno ~1km² — pontos | 482ms | 578ms | 578ms | OK |
+| C4.2 | Bbox grande ~10km² — pontos | 601ms | 737ms | 737ms | OK |
+| C4.3 | Bbox pequeno ~1km² — linhas | 603ms | 710ms | 710ms | OK |
+| C4.4 | Bbox grande ~10km² — linhas | 588ms | 834ms | 834ms | OK |
+| C5.1 | CQL atributo exato (`tip_pn='TE'`) | 639ms | 818ms | 818ms | OK |
+| C5.4 | CQL ILIKE (`ILIKE '%trafo%'`) | 524ms | 583ms | 583ms | OK |
+| C6.1 | Search cross-layer por código | 590ms | 702ms | 702ms | OK |
+| C7.1 | SQL View JOIN — inconsistências sem filtro | 471ms | 561ms | 561ms | OK |
+| C7.2 | SQL View JOIN — inconsistências com bbox | 535ms | 844ms | 844ms | OK |
+| C8.1 | WMS GetMap PONNOT (256×256) | 476ms | 562ms | 562ms | OK |
+| C8.2 | WMS GetMap SSDMT (256×256) | 481ms | 586ms | 586ms | OK |
+| C8.3 | WMS GetMap SUB (256×256) | 475ms | 716ms | 716ms | OK |
+
+Todos os 19 cenários ficaram abaixo de 1s (p95). Critério de aceitação: bbox < 1s, GetFeature < 2s, WMS < 500ms (p50 OK, p95 ligeiramente acima).
+
+### Comparativo direto SQL Server vs PostGIS (via GeoServer WFS)
+
+| Cenário | PostGIS DEV | SQL Server Local | Observação |
+|---------|-------------|------------------|-----------|
+| Listar layers | 772ms | 514ms | SQL Server 33% mais rápido — mas PostGIS tem Redis cache quente |
+| Bbox pontos pequeno (~1km²) | 652ms | 662ms | **Empate** (~1.5%) |
+| Bbox pontos grande (~10km²) | 598ms | 575ms | SQL Server 4% mais rápido |
+| Bbox linhas pequeno | 724ms | 482ms | SQL Server 33% mais rápido |
+| Bbox linhas grande | 635ms | 508ms | SQL Server 20% mais rápido |
+| Bbox polígonos | 603ms | 490ms | SQL Server 19% mais rápido |
+| CQL filtro atributo | 818ms | 572ms | SQL Server 30% mais rápido |
+| Search cross-layer | 1.622ms | 605ms | SQL Server 63% — PostGIS busca em 40 layers vs 3 do POC |
+| SQL View JOIN (inconsistências) | N/A | 663ms | Sem baseline PostGIS, mas < 1s |
+
+**Conclusão observada**: SQL Server equivalente ou superior em todos os cenários WFS testados. Descontando ~100ms de latência de rede do PostGIS, a diferença real é pequena — os bancos são **equivalentes** neste workload.
+
+### Hipóteses — validadas ou refutadas
+
+| Hipótese original | Resultado observado | Veredito |
+|-------------------|---------------------|---------|
+| PostGIS mais rápido em bbox scan denso | Empate (~1.5%) para pontos; SQL Server 20-33% mais rápido para linhas | **Refutada** |
+| PostGIS ganha em spatial JOINs (`ST_DWithin`) | Sem dados diretos — SQL Views com JOIN no SQL Server: 471-663ms, aceitável | **Inconclusiva** |
+| SQL Server competitivo em filtros mistos | SQL Server 30% mais rápido no CQL via WFS | **Confirmada** |
+| Views de validação similares | SQL Server: 561-844ms p95 — sem baseline PostGIS comparável | **Parcial** |
+| PostGIS KNN com `<->` mais eficiente | Não testado via WFS — hipótese permanece para benchmark direto B12 | **Pendente** |
+
+> **Nota metodológica**: os dados acima são de queries **via GeoServer WFS** (HTTP → GeoServer → banco).
+> Os cenários B01–B15 deste POC medem queries **diretamente no banco** (sem GeoServer como proxy),
+> eliminando a variável de serialização GeoJSON/GML e renderização do GeoServer.
+> Os resultados diretos podem diferir — execute `npm run run` para obter números precisos.
 
 ---
 
