@@ -38,9 +38,9 @@ Synthetic electrical distribution network — state of Paraná, Brazil (bounding
 - Sprint 1 ✅ v0.1.0 — SQL Server + PostGIS schemas, validation views, seed generator
 - Sprint 2 ✅ v0.2.0 — GeoServer data_dir, 3 layers, bbox bug fix
 - Sprint 3 ✅ v0.3.3 — Fastify API: /health, /inconsistencias, /benchmark/run; CI green
-- Sprint 4 🔄 IN PROGRESS — benchmark/scenarios.json, runner CLI, real results
-- Sprint 4.5 — AI endpoints: /ai/analyze-inconsistencias, /ai/benchmark-insights, /ai/query-suggestions
-- Sprint 5 — docs completion, README results, badges, polish
+- Sprint 4 ✅ v0.4.0 — benchmark/runner.ts CLI, benchmark-report.yml updated
+- Sprint 4.5 ✅ v0.5.1 — api/src/ai/ (claude-client, 3 prompts, 3 Zod schemas, routes/ai.ts)
+- Sprint 5 ✅ v0.6.0 — docs/01-arquitetura.md, docs/05-benchmark.md, docs/06-ia.md, README polished
 
 ## Slash Commands Available
 - `/project:review [file or PR diff]` — Senior code review with security + spatial focus
