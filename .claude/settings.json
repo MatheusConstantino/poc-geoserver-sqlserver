@@ -1,0 +1,71 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(docker ps*)",
+      "Bash(docker logs*)",
+      "Bash(docker inspect*)",
+      "Bash(git status)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git add *)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+      "Bash(git push*)",
+      "Bash(git pull*)",
+      "Bash(git stash*)",
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(npx *)",
+      "Bash(gh issue*)",
+      "Bash(gh pr*)",
+      "Bash(gh repo*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(docker system prune*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[pre-write] Ensure no secrets, API keys or passwords are hardcoded in this file.'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[pre-bash] Running shell command — verify it is non-destructive and idempotent if touching SQL/data.'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[security-scan] Post-write check: review file for hardcoded credentials before committing.'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "echo '\n[session-end] Reminders: (1) Use conventional commits. (2) Run /project:review before opening a PR. (3) No secrets in .env — use .env.example only.'"
+      }
+    ]
+  }
+}
