@@ -5,6 +5,9 @@ import { getPool as getSqlPool } from '../db/sqlserver.js'
 import { getPool as getPgPool }  from '../db/postgis.js'
 import type { BenchmarkRequest, BenchmarkResponse } from '../schemas/benchmark.js'
 
+type ScenarioKey   = keyof NonNullable<BenchmarkResponse['scenarios']>
+type ScenarioEntry = NonNullable<BenchmarkResponse['scenarios'][ScenarioKey]>
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SCENARIOS_PATH = join(__dirname, '..', '..', '..', 'benchmark', 'scenarios.json')
 
@@ -207,7 +210,7 @@ export async function runBenchmark(req: BenchmarkRequest): Promise<BenchmarkResp
     const cfg = allScenarios[id]
     if (!cfg) continue
 
-    const entry: BenchmarkResponse['scenarios'][typeof id] = { description: cfg.description }
+    const entry: ScenarioEntry = { description: cfg.description }
 
     for (const db of req.databases) {
       try {
@@ -239,7 +242,7 @@ export async function runBenchmark(req: BenchmarkRequest): Promise<BenchmarkResp
       entry.winner = 'error'
     }
 
-    scenarioResults[id] = entry
+    scenarioResults[id as ScenarioKey] = entry
   }
 
   return {
