@@ -96,8 +96,8 @@ jobs:
         run: cp .env.example .env
 
       - name: Start API stack (SQL Server + PostGIS + API only — no GeoServer, no seed)
-        run: docker compose up api -d --wait
-        timeout-minutes: 5
+        run: docker compose up api -d --wait --wait-timeout 300
+        timeout-minutes: 8
 
       - name: GET /health must return 200
         run: |
