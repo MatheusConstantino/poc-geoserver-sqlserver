@@ -1,0 +1,94 @@
+name: Benchmark Report
+
+on:
+  # Run manually to generate a fresh benchmark report
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: "Scenarios to run (all, B01, B07, ...)"
+        required: false
+        default: "all"
+  # Also runs on pushes to main that touch benchmark scenarios
+  push:
+    branches: [main]
+    paths:
+      - "benchmark/scenarios.json"
+      - "api/src/**"
+
+jobs:
+  benchmark:
+    name: Run Benchmarks & Comment Results
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: cp .env.example .env
+
+      - name: Start stack (databases + API only)
+        run: |
+          docker compose up -d sqlserver postgis
+          echo "Waiting for databases to be healthy..."
+          timeout 120 bash -c 'until docker compose ps --format json | python3 -c "
+          import sys, json
+          services = [json.loads(l) for l in sys.stdin if l.strip()]
+          dbs = [s for s in services if s[\"Service\"] in [\"sqlserver\",\"postgis\"]]
+          all_healthy = all(s.get(\"Health\",\"\") == \"healthy\" for s in dbs)
+          sys.exit(0 if all_healthy else 1)
+          "; do sleep 5; done'
+          docker compose up -d api
+          sleep 15
+
+      - name: Wait for API health
+        run: |
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/health; do sleep 3; done'
+
+      - name: Run benchmarks
+        id: benchmark
+        run: |
+          RESULT=$(curl -sf -X POST http://localhost:3000/benchmark/run \
+            -H "Content-Type: application/json" \
+            -d "{\"scenarios\": \"${{ github.event.inputs.scenarios || 'all' }}\", \"databases\": [\"sqlserver\", \"postgis\"]}")
+          echo "$RESULT" > /tmp/benchmark-result.json
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+      - name: Generate markdown report
+        id: report
+        run: |
+          node - <<'SCRIPT'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/benchmark-result.json', 'utf8'));
+          const date = new Date().toISOString().split('T')[0];
+
+          let table = `# Benchmark Report — ${date}\n\n`;
+          table += `| Scenario | Description | SQL Server p50 | SQL Server p95 | PostGIS p50 | PostGIS p95 | Winner |\n`;
+          table += `|----------|-------------|:-------------:|:-------------:|:-----------:|:-----------:|:------:|\n`;
+
+          for (const [id, data] of Object.entries(result.scenarios || {})) {
+            const sql = data.sqlserver || {};
+            const pg = data.postgis || {};
+            const winner = (sql.p95 || Infinity) < (pg.p95 || Infinity) ? 'SQL Server' : 'PostGIS';
+            table += `| ${id} | ${data.description || ''} | ${sql.p50 || '-'}ms | ${sql.p95 || '-'}ms | ${pg.p50 || '-'}ms | ${pg.p95 || '-'}ms | ${winner} |\n`;
+          }
+
+          const outputPath = `benchmark/results/${date}.md`;
+          fs.writeFileSync(outputPath, table);
+          console.log('Report written to', outputPath);
+          SCRIPT
+
+      - name: Commit benchmark results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          DATE=$(date +%Y-%m-%d)
+          git add benchmark/results/${DATE}.md
+          git commit -m "perf: add benchmark results ${DATE}" || echo "No changes to commit"
+          git push
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down

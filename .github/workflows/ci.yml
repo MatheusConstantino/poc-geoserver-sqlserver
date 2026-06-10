@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Docker Compose validation (no images pulled — syntax only)
+  # ---------------------------------------------------------------------------
+  docker-validate:
+    name: Docker Compose Config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml syntax
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          echo "docker-compose.yml is valid"
+
+  # ---------------------------------------------------------------------------
+  # Job 2: API lint + type-check
+  # ---------------------------------------------------------------------------
+  api-lint:
+    name: API — Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Secrets scan — no credentials in tracked files
+  # ---------------------------------------------------------------------------
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for hardcoded secrets
+        run: |
+          # Fail if any tracked file contains what looks like a real secret
+          # (excludes .env.example which has safe placeholders)
+          FOUND=$(git grep -iE \
+            "(password|api_key|apikey|secret|token)\s*=\s*['\"][^${}'\"][^'\"]{4,}['\"]" \
+            -- ':!.env.example' ':!*.md' ':!*.json.example' \
+            || true)
+          if [ -n "$FOUND" ]; then
+            echo "Possible hardcoded secret detected:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "No hardcoded secrets found."
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Markdown lint — keep docs consistent
+  # ---------------------------------------------------------------------------
+  docs-lint:
+    name: Docs — Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            docs/**/*.md
+            specs/**/*.md
+            README.md
+          config: |
+            {
+              "MD013": false,
+              "MD033": false,
+              "MD041": false
+            }
