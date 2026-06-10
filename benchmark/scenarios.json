@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "description": "Benchmark scenarios for poc-geoserver-sqlserver. See specs/05-benchmark-spec.md for full specification.",
+  "defaults": {
+    "warmup_iterations": 3,
+    "measured_iterations": 10,
+    "timeout_ms": 5000
+  },
+  "scenarios": {
+    "B01": {
+      "description": "Bbox query — dense region (Curitiba metropolitan area)",
+      "type": "spatial_filter",
+      "table": "postes",
+      "bbox": [-49.5, -25.7, -49.0, -25.2],
+      "expected_rows_approx": 9000
+    },
+    "B02": {
+      "description": "Bbox query — sparse region (rural west Paraná)",
+      "type": "spatial_filter",
+      "table": "postes",
+      "bbox": [-53.0, -24.0, -52.5, -23.5],
+      "expected_rows_approx": 1000
+    },
+    "B03": {
+      "description": "Bbox query — line features (trechos, medium region)",
+      "type": "spatial_filter",
+      "table": "trechos",
+      "bbox": [-51.0, -25.5, -50.0, -24.5],
+      "expected_rows_approx": 15000
+    },
+    "B04": {
+      "description": "Bbox query — polygon features (full Paraná extent)",
+      "type": "spatial_filter",
+      "table": "subestacoes",
+      "bbox": [-54.6, -26.7, -48.0, -22.5],
+      "expected_rows_approx": 2000
+    },
+    "B05": {
+      "description": "Point-in-polygon (which subestacao contains a given point)",
+      "type": "containment",
+      "table": "subestacoes",
+      "point": [-49.27, -25.43],
+      "expected_rows_approx": 1
+    },
+    "B06": {
+      "description": "Distance query (postes within 500m of a point)",
+      "type": "distance_filter",
+      "table": "postes",
+      "point": [-49.27, -25.43],
+      "radius_degrees": 0.0045,
+      "expected_rows_approx": 150
+    },
+    "B07": {
+      "description": "Spatial JOIN — pole to line (poste ↔ trecho endpoints)",
+      "type": "spatial_join",
+      "tables": ["postes", "trechos"],
+      "expected_rows_approx": 150000
+    },
+    "B08": {
+      "description": "Spatial JOIN — pole to polygon (count postes per subestacao)",
+      "type": "spatial_aggregation_join",
+      "tables": ["subestacoes", "postes"],
+      "expected_rows_approx": 2000
+    },
+    "B09": {
+      "description": "Mixed filter — attribute (tensao=13.8kV) + spatial (Curitiba bbox)",
+      "type": "mixed",
+      "table": "postes",
+      "bbox": [-49.5, -25.7, -49.0, -25.2],
+      "filter": { "tensao": "13.8kV" },
+      "expected_rows_approx": 3000
+    },
+    "B10": {
+      "description": "Spatial aggregation — count postes per subestacao area",
+      "type": "aggregate",
+      "tables": ["subestacoes", "postes"],
+      "expected_rows_approx": 2000
+    },
+    "B11": {
+      "description": "Invalid geometry detection — find all subestacoes where STIsValid = 0",
+      "type": "validity_scan",
+      "table": "subestacoes",
+      "expected_rows_approx": 2000
+    },
+    "B12": {
+      "description": "Nearest neighbor k=5 (5 closest postes to a given point)",
+      "type": "knn",
+      "table": "postes",
+      "point": [-49.27, -25.43],
+      "k": 5,
+      "expected_rows_approx": 5
+    },
+    "B13": {
+      "description": "Line intersection — find pairs of trechos that cross",
+      "type": "self_join",
+      "table": "trechos",
+      "expected_rows_approx": 1000
+    },
+    "B14": {
+      "description": "Cross-schema JOIN — postes + verifier inconsistency view",
+      "type": "cross_schema",
+      "tables": ["rede_eletrica.postes", "verifier.vw_pontos_fora_poligono"],
+      "expected_rows_approx": 3000
+    },
+    "B15": {
+      "description": "Full validation scan — all 5 verifier views in one query",
+      "type": "validation_full",
+      "views": ["VR-001", "VR-002", "VR-003", "VR-004", "VR-005"],
+      "expected_rows_approx": 15000
+    }
+  }
+}
