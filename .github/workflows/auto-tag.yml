@@ -1,0 +1,96 @@
+name: Auto Tag on Merge
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  tag:
+    name: Create semantic version tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          git fetch --tags
+          LATEST=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          echo "latest=${LATEST:-v0.0.0}" >> $GITHUB_OUTPUT
+          echo "Latest tag: ${LATEST:-v0.0.0}"
+
+      - name: Determine bump type from commit message
+        id: bump
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          echo "Commit: $COMMIT_MSG"
+
+          if echo "$COMMIT_MSG" | grep -qiE "(BREAKING CHANGE|^feat!:|^fix!:)"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -qE "^feat(\(.+\))?:"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate next version
+        id: version
+        run: |
+          LATEST="${{ steps.latest_tag.outputs.latest }}"
+          VERSION="${LATEST#v}"
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          case "${{ steps.bump.outputs.type }}" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "tag=$NEXT_TAG" >> $GITHUB_OUTPUT
+          echo "Next tag: $NEXT_TAG (bump: ${{ steps.bump.outputs.type }})"
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          COMMIT_SHORT=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "$(cat <<EOF
+          Release $TAG
+
+          Commit: $COMMIT_SHORT
+          Message: $COMMIT_MSG
+          Bump type: ${{ steps.bump.outputs.type }}
+          EOF
+          )"
+
+          git push origin "$TAG"
+          echo "Created and pushed tag: $TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes "## $TAG
+
+          **Triggered by:** $COMMIT_MSG
+          **Bump type:** ${{ steps.bump.outputs.type }}
+
+          See [CHANGELOG](https://github.com/${{ github.repository }}/commits/master) for full history." \
+            --latest
