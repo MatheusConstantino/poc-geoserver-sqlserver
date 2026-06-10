@@ -33,6 +33,15 @@ Synthetic electrical distribution network — state of Paraná, Brazil (bounding
 | Code PR, SQL security, performance review | `/project:review` (uses `.claude/agents/reviewer.md`) |
 | GeoServer config, spatial SQL, SRID issues | read `.claude/agents/spatial-expert.md` |
 
+## Sprint Status
+- Sprint 0 ✅ v0.0.1 — .claude/, .github/, specs, ADRs
+- Sprint 1 ✅ v0.1.0 — SQL Server + PostGIS schemas, validation views, seed generator
+- Sprint 2 ✅ v0.2.0 — GeoServer data_dir, 3 layers, bbox bug fix
+- Sprint 3 ✅ v0.3.3 — Fastify API: /health, /inconsistencias, /benchmark/run; CI green
+- Sprint 4 🔄 IN PROGRESS — benchmark/scenarios.json, runner CLI, real results
+- Sprint 4.5 — AI endpoints: /ai/analyze-inconsistencias, /ai/benchmark-insights, /ai/query-suggestions
+- Sprint 5 — docs completion, README results, badges, polish
+
 ## Slash Commands Available
 - `/project:review [file or PR diff]` — Senior code review with security + spatial focus
 - `/project:deploy` — Interactive deploy checklist
