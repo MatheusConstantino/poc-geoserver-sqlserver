@@ -27,6 +27,38 @@ interface ScenariosFile {
   scenarios: Record<string, ScenarioConfig>
 }
 
+// ---------------------------------------------------------------------------
+// Pure utility functions — exported for unit tests
+// ---------------------------------------------------------------------------
+
+/** Computes p50/p95/p99 and throughput from a sorted list of timings (ms). */
+export function computeMetrics(
+  timings: number[],
+): { p50: number; p95: number; p99: number; throughput_rps: number } {
+  const sorted = [...timings].sort((a, b) => a - b)
+  const n = sorted.length
+  const p50 = sorted[Math.floor(n * 0.50)] ?? 0
+  const p95 = sorted[Math.floor(n * 0.95)] ?? 0
+  const p99 = sorted[Math.floor(n * 0.99)] ?? 0
+  const avg = sorted.reduce((s, v) => s + v, 0) / n
+  const throughput_rps = avg > 0 ? Math.round(1000 / avg) : 0
+  return { p50, p95, p99, throughput_rps }
+}
+
+/** Determines benchmark winner by p95 latency. Tie threshold: < 5 ms. */
+export function determineWinner(
+  sqlP95: number,
+  pgP95:  number,
+): { winner: 'sqlserver' | 'postgis' | 'tie'; margin_pct: number } {
+  const diff = pgP95 - sqlP95
+  if (Math.abs(diff) < 5) return { winner: 'tie', margin_pct: 0 }
+  const winner    = diff > 0 ? ('sqlserver' as const) : ('postgis' as const)
+  const loserP95  = diff > 0 ? pgP95  : sqlP95
+  const winnerP95 = diff > 0 ? sqlP95 : pgP95
+  const margin_pct = loserP95 > 0 ? Math.round(((loserP95 - winnerP95) / loserP95) * 100) : 0
+  return { winner, margin_pct }
+}
+
 // Build the SQL for each scenario type — same semantics, different syntax per DB
 function buildQuery(id: string, cfg: ScenarioConfig, db: 'sqlserver' | 'postgis'): string {
   const isPg = db === 'postgis'
@@ -184,15 +216,8 @@ async function measureQuery(
   timings.length = 0
   for (let i = 0; i < opts.measured_iterations; i++) await runOnce()
 
-  timings.sort((a, b) => a - b)
-  const n = timings.length
-  const p50 = timings[Math.floor(n * 0.50)] ?? 0
-  const p95 = timings[Math.floor(n * 0.95)] ?? 0
-  const p99 = timings[Math.floor(n * 0.99)] ?? 0
-  const avg = timings.reduce((s, v) => s + v, 0) / n
-  const throughput_rps = avg > 0 ? Math.round(1000 / avg) : 0
-
-  return { p50, p95, p99, throughput_rps, iterations: n }
+  const metrics = computeMetrics(timings)
+  return { ...metrics, iterations: timings.length }
 }
 
 export async function runBenchmark(req: BenchmarkRequest): Promise<BenchmarkResponse> {
@@ -228,16 +253,9 @@ export async function runBenchmark(req: BenchmarkRequest): Promise<BenchmarkResp
 
     // Determine winner (by p95)
     if (entry.sqlserver && entry.postgis && !entry.sqlserver.error && !entry.postgis.error) {
-      const diff = entry.postgis.p95 - entry.sqlserver.p95
-      if (Math.abs(diff) < 5) {
-        entry.winner = 'tie'
-        entry.margin_pct = 0
-      } else {
-        entry.winner = diff > 0 ? 'sqlserver' : 'postgis'
-        const loser = diff > 0 ? entry.postgis.p95 : entry.sqlserver.p95
-        const winner = diff > 0 ? entry.sqlserver.p95 : entry.postgis.p95
-        entry.margin_pct = loser > 0 ? Math.round(((loser - winner) / loser) * 100) : 0
-      }
+      const { winner, margin_pct } = determineWinner(entry.sqlserver.p95, entry.postgis.p95)
+      entry.winner     = winner
+      entry.margin_pct = margin_pct
     } else {
       entry.winner = 'error'
     }

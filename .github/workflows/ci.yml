@@ -54,6 +54,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm test
+
   # ---------------------------------------------------------------------------
   # Job 3: Secrets scan — no credentials in tracked files
   # ---------------------------------------------------------------------------
