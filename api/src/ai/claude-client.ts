@@ -88,7 +88,7 @@ export async function ask<T>(
           }
           throw new AiUpstreamError(String(retryErr))
         }
-      } else if (err.status >= 500) {
+      } else if ((err.status ?? 0) >= 500) {
         throw new AiUpstreamError(`Claude API ${err.status}: ${err.message}`)
       } else {
         throw err
