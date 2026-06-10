@@ -1,0 +1,18 @@
+<layer>
+  <id>LayerInfoImpl--subestacoes</id>
+  <name>subestacoes</name>
+  <path>/</path>
+  <type>VECTOR</type>
+  <defaultStyle>
+    <id>StyleInfoImpl--polygon</id>
+    <name>polygon</name>
+    <workspace>
+      <id>WorkspaceInfoImpl--poc-geoserver</id>
+    </workspace>
+  </defaultStyle>
+  <resource class="featureType">
+    <id>FeatureTypeInfoImpl--subestacoes</id>
+  </resource>
+  <enabled>true</enabled>
+  <queryable>true</queryable>
+</layer>

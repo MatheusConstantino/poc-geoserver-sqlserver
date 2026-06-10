@@ -47,8 +47,11 @@ benchmark/results/*.json
 coverage/
 .nyc_output/
 
-# GeoServer local data (mounted at runtime)
-geoserver/data_dir/workspaces/*/
+# GeoServer runtime cache (generated at runtime — not config)
+geoserver/data_dir/gwc/
+geoserver/data_dir/logs/
+geoserver/data_dir/tmp/
+geoserver/data_dir/printing/
 
 # Temporary files
 tmp/
