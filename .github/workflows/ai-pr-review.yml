@@ -3,6 +3,7 @@ name: AI PR Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
+    branches: [master, develop]
 
 # Only run on non-draft PRs and skip dependabot
 jobs:
