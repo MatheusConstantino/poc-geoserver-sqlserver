@@ -1,0 +1,6 @@
+<namespace>
+  <id>NamespaceInfoImpl--poc-geoserver</id>
+  <prefix>poc-geoserver</prefix>
+  <uri>http://poc-geoserver/</uri>
+  <isolated>false</isolated>
+</namespace>

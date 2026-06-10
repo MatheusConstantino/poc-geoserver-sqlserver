@@ -1,0 +1,51 @@
+<featureType>
+  <id>FeatureTypeInfoImpl--subestacoes</id>
+  <name>subestacoes</name>
+  <nativeName>subestacoes</nativeName>
+  <namespace>
+    <id>NamespaceInfoImpl--poc-geoserver</id>
+  </namespace>
+  <title>Subestacoes — Substations / Concession Areas</title>
+  <abstract>
+    Substations and concession area polygons (POLYGON geometry, SRID 4326).
+    ~2k features covering Paraná state, Brazil.
+  </abstract>
+  <keywords>
+    <string>subestacoes</string>
+    <string>substations</string>
+    <string>areas de concessao</string>
+    <string>Parana</string>
+  </keywords>
+  <srs>EPSG:4326</srs>
+  <nativeCRS>EPSG:4326</nativeCRS>
+
+  <!--
+    GEOSERVER BUG FIX applied — see trechos/featuretype.xml for full explanation.
+    POLYGON layers also require explicit nativeBoundingBox when using SQL Server JDBC.
+  -->
+  <nativeBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </nativeBoundingBox>
+  <latLonBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </latLonBoundingBox>
+
+  <projectionPolicy>FORCE_DECLARED</projectionPolicy>
+  <enabled>true</enabled>
+  <store class="dataStore">
+    <id>DataStoreInfoImpl--sqlserver-poc</id>
+  </store>
+  <maxFeatures>2000</maxFeatures>
+  <numDecimals>6</numDecimals>
+  <overridingServiceSRS>false</overridingServiceSRS>
+  <skipNumberMatched>false</skipNumberMatched>
+  <circularArcPresent>false</circularArcPresent>
+</featureType>

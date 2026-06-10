@@ -1,0 +1,35 @@
+<dataStore>
+  <id>DataStoreInfoImpl--sqlserver-poc</id>
+  <name>sqlserver-datastore</name>
+  <description>SQL Server 2022 — rede_eletrica schema via JDBC</description>
+  <type>Microsoft SQL Server</type>
+  <enabled>true</enabled>
+  <workspace>
+    <id>WorkspaceInfoImpl--poc-geoserver</id>
+  </workspace>
+  <connectionParameters>
+    <!--
+      GeoServer SQL Server JDBC DataStore parameters.
+      Values reference environment variables set in docker-compose.yml.
+      See docs/03-setup-geoserver.md for the bbox bug workaround context.
+    -->
+    <entry key="host">sqlserver</entry>
+    <entry key="port">1433</entry>
+    <entry key="database">geo_poc</entry>
+    <entry key="schema">rede_eletrica</entry>
+    <entry key="user">sa</entry>
+    <!-- Password injected via GeoServer environment variable substitution -->
+    <entry key="passwd">sa:SA_PASSWORD</entry>
+    <entry key="dbtype">sqlserver</entry>
+    <entry key="integratedSecurity">false</entry>
+    <entry key="SSL">false</entry>
+    <entry key="trustServerCertificate">true</entry>
+    <!-- Connection pool -->
+    <entry key="min connections">1</entry>
+    <entry key="max connections">10</entry>
+    <entry key="Connection timeout">20</entry>
+    <entry key="validate connections">true</entry>
+    <!-- Expose primary keys so GeoServer can use id columns -->
+    <entry key="Expose primary keys">true</entry>
+  </connectionParameters>
+</dataStore>

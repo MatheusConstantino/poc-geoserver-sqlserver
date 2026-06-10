@@ -1,0 +1,52 @@
+<featureType>
+  <id>FeatureTypeInfoImpl--postes</id>
+  <name>postes</name>
+  <nativeName>postes</nativeName>
+  <namespace>
+    <id>NamespaceInfoImpl--poc-geoserver</id>
+  </namespace>
+  <title>Postes — Utility Poles</title>
+  <abstract>
+    Utility poles (POINT geometry, SRID 4326) from the synthetic electrical
+    distribution network dataset. ~50k features covering Paraná state, Brazil.
+  </abstract>
+  <keywords>
+    <string>postes</string>
+    <string>utility poles</string>
+    <string>rede eletrica</string>
+    <string>Parana</string>
+  </keywords>
+  <srs>EPSG:4326</srs>
+  <nativeCRS>EPSG:4326</nativeCRS>
+
+  <!--
+    POINT geometry — bbox computed correctly by the SQL Server JDBC plugin.
+    No manual bbox override needed for POINT layers.
+    (LINESTRING and POLYGON layers require explicit bbox — see trechos and subestacoes configs)
+  -->
+  <nativeBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </nativeBoundingBox>
+  <latLonBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </latLonBoundingBox>
+
+  <projectionPolicy>FORCE_DECLARED</projectionPolicy>
+  <enabled>true</enabled>
+  <store class="dataStore">
+    <id>DataStoreInfoImpl--sqlserver-poc</id>
+  </store>
+  <maxFeatures>10000</maxFeatures>
+  <numDecimals>6</numDecimals>
+  <overridingServiceSRS>false</overridingServiceSRS>
+  <skipNumberMatched>false</skipNumberMatched>
+  <circularArcPresent>false</circularArcPresent>
+</featureType>
