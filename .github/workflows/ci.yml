@@ -43,10 +43,10 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: api/package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Type check
         run: npm run typecheck
@@ -69,8 +69,8 @@ jobs:
         run: |
           # Fail if any tracked file contains what looks like a real secret
           # (excludes .env.example which has safe placeholders)
-          FOUND=$(git grep -iE \
-            "(password|api_key|apikey|secret|token)\s*=\s*['\"][^${}'\"][^'\"]{4,}['\"]" \
+          FOUND=$(git grep -iP \
+            "(password|api_key|apikey|secret|token)\s*=\s*['\"][^\${}'\"][^'\"]{4,}['\"]" \
             -- ':!.env.example' ':!*.md' ':!*.json.example' \
             || true)
           if [ -n "$FOUND" ]; then
@@ -96,9 +96,4 @@ jobs:
             docs/**/*.md
             specs/**/*.md
             README.md
-          config: |
-            {
-              "MD013": false,
-              "MD033": false,
-              "MD041": false
-            }
+          config: .markdownlint.json
