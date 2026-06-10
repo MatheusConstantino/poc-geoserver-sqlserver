@@ -1,0 +1,187 @@
+name: poc-geoserver-sqlserver
+
+# =============================================================================
+# Full geospatial stack — bring everything up with:
+#   docker compose up --build
+# Tear down completely (including volumes) with:
+#   docker compose down -v
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # SQL Server 2022 — primary spatial database
+  # ---------------------------------------------------------------------------
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: poc-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${SA_PASSWORD}
+      MSSQL_PID: Developer
+    ports:
+      - "${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./sqlserver/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -Q 'SELECT 1' -No -C || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - geo-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # SQL Server seed runner — runs once then exits
+  # ---------------------------------------------------------------------------
+  sqlserver-seed:
+    build:
+      context: ./sqlserver
+      dockerfile: Dockerfile.seed
+    container_name: poc-sqlserver-seed
+    environment:
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: 1433
+      SQLSERVER_DB: ${SQLSERVER_DB}
+      SQLSERVER_USER: ${SQLSERVER_USER}
+      SA_PASSWORD: ${SA_PASSWORD}
+      SEED_RANDOM_SEED: ${SEED_RANDOM_SEED:-42}
+      SEED_POINTS_COUNT: ${SEED_POINTS_COUNT:-50000}
+      SEED_LINES_COUNT: ${SEED_LINES_COUNT:-100000}
+      SEED_POLYGONS_COUNT: ${SEED_POLYGONS_COUNT:-2000}
+      SEED_INCONSISTENCIES_COUNT: ${SEED_INCONSISTENCIES_COUNT:-15000}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - geo-net
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 + PostGIS 3.4 — comparison database
+  # ---------------------------------------------------------------------------
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: poc-postgis
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./postgis/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - geo-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # GeoServer 2.25 — WMS/WFS map server
+  # ---------------------------------------------------------------------------
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.25.x
+    container_name: poc-geoserver
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_USER}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_PASSWORD}
+      SKIP_DEMO_DATA: "true"
+      JAVA_OPTS: >-
+        -Xms512m -Xmx1g
+        -Dorg.geotools.referencing.forceXY=true
+    ports:
+      - "${GEOSERVER_PORT:-8080}:8080"
+    volumes:
+      - ./geoserver/data_dir:/opt/geoserver_data
+      - geoserver_cache:/opt/geoserver/data_dir/gwc
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/geoserver/web/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - geo-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # API — Node.js 20 / Fastify + AI integration layer
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: development
+    container_name: poc-api
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PORT: ${API_PORT:-3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # SQL Server
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: 1433
+      SQLSERVER_DB: ${SQLSERVER_DB}
+      SQLSERVER_USER: ${SQLSERVER_USER}
+      SA_PASSWORD: ${SA_PASSWORD}
+      # PostGIS
+      POSTGRES_HOST: postgis
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # GeoServer
+      GEOSERVER_HOST: geoserver
+      GEOSERVER_PORT: 8080
+      # AI
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AI_MODEL: ${AI_MODEL:-claude-sonnet-4-6}
+      AI_MAX_TOKENS: ${AI_MAX_TOKENS:-2048}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - ./api/src:/app/src:ro
+      - ./benchmark:/app/benchmark
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - geo-net
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes — persistent data survives container restarts
+# Use `docker compose down -v` to wipe everything and start fresh
+# =============================================================================
+volumes:
+  sqlserver_data:
+  postgis_data:
+  geoserver_cache:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  geo-net:
+    driver: bridge
