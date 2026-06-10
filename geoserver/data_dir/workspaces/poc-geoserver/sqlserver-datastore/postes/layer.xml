@@ -1,0 +1,18 @@
+<layer>
+  <id>LayerInfoImpl--postes</id>
+  <name>postes</name>
+  <path>/</path>
+  <type>VECTOR</type>
+  <defaultStyle>
+    <id>StyleInfoImpl--point</id>
+    <name>point</name>
+    <workspace>
+      <id>WorkspaceInfoImpl--poc-geoserver</id>
+    </workspace>
+  </defaultStyle>
+  <resource class="featureType">
+    <id>FeatureTypeInfoImpl--postes</id>
+  </resource>
+  <enabled>true</enabled>
+  <queryable>true</queryable>
+</layer>

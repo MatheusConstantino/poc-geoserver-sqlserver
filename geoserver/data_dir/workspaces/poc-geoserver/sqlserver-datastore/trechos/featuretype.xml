@@ -1,0 +1,69 @@
+<featureType>
+  <id>FeatureTypeInfoImpl--trechos</id>
+  <name>trechos</name>
+  <nativeName>trechos</nativeName>
+  <namespace>
+    <id>NamespaceInfoImpl--poc-geoserver</id>
+  </namespace>
+  <title>Trechos — Medium Voltage Lines</title>
+  <abstract>
+    Medium-voltage network lines (LINESTRING geometry, SRID 4326).
+    ~100k features covering Paraná state, Brazil.
+  </abstract>
+  <keywords>
+    <string>trechos</string>
+    <string>network lines</string>
+    <string>rede eletrica</string>
+    <string>media tensao</string>
+  </keywords>
+  <srs>EPSG:4326</srs>
+  <nativeCRS>EPSG:4326</nativeCRS>
+
+  <!--
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  GEOSERVER BUG FIX — SQL Server JDBC + LINESTRING bbox          ║
+    ╠══════════════════════════════════════════════════════════════════╣
+    ║  The GeoServer SQL Server JDBC plugin (gt-jdbc-sqlserver) fails  ║
+    ║  to auto-compute the native bounding box for LINESTRING and      ║
+    ║  POLYGON layers. Symptoms:                                       ║
+    ║    - Layer Preview shows empty map or "no features" error        ║
+    ║    - GetCapabilities returns bbox 0,0,0,0                        ║
+    ║    - WFS GetFeature works correctly (data is fine, metadata not) ║
+    ║                                                                  ║
+    ║  Root cause: the plugin queries geometry_columns view for bbox   ║
+    ║  metadata; SQL Server geometry type does not populate this view. ║
+    ║                                                                  ║
+    ║  Workaround: declare the nativeBoundingBox explicitly here.      ║
+    ║  Set to the known data extent (Paraná state bounding box).       ║
+    ║  This is a one-time config — does not require data re-loading.   ║
+    ║                                                                  ║
+    ║  Affects: LINESTRING, POLYGON layers only (POINT works fine).    ║
+    ║  See: docs/03-setup-geoserver.md for full investigation notes.   ║
+    ╚══════════════════════════════════════════════════════════════════╝
+  -->
+  <nativeBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </nativeBoundingBox>
+  <latLonBoundingBox>
+    <minx>-54.6</minx>
+    <maxx>-48.0</maxx>
+    <miny>-26.7</miny>
+    <maxy>-22.5</maxy>
+    <crs>EPSG:4326</crs>
+  </latLonBoundingBox>
+
+  <projectionPolicy>FORCE_DECLARED</projectionPolicy>
+  <enabled>true</enabled>
+  <store class="dataStore">
+    <id>DataStoreInfoImpl--sqlserver-poc</id>
+  </store>
+  <maxFeatures>5000</maxFeatures>
+  <numDecimals>6</numDecimals>
+  <overridingServiceSRS>false</overridingServiceSRS>
+  <skipNumberMatched>false</skipNumberMatched>
+  <circularArcPresent>false</circularArcPresent>
+</featureType>

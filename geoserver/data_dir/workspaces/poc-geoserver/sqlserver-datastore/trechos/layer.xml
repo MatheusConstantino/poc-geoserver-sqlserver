@@ -1,0 +1,18 @@
+<layer>
+  <id>LayerInfoImpl--trechos</id>
+  <name>trechos</name>
+  <path>/</path>
+  <type>VECTOR</type>
+  <defaultStyle>
+    <id>StyleInfoImpl--line</id>
+    <name>line</name>
+    <workspace>
+      <id>WorkspaceInfoImpl--poc-geoserver</id>
+    </workspace>
+  </defaultStyle>
+  <resource class="featureType">
+    <id>FeatureTypeInfoImpl--trechos</id>
+  </resource>
+  <enabled>true</enabled>
+  <queryable>true</queryable>
+</layer>
