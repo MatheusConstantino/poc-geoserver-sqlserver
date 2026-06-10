@@ -164,17 +164,57 @@ curl -X POST http://localhost:3000/benchmark/run \
 
 ---
 
-## Endpoints AI (Sprint 4.5)
+## Endpoints AI
 
-Os seguintes endpoints serão implementados no Sprint 4.5 usando a Claude API (claude-sonnet-4-6):
+Todos os endpoints abaixo requerem `ANTHROPIC_API_KEY` configurado no ambiente.
+Documentação detalhada: [`docs/06-ia.md`](06-ia.md)
 
-| Endpoint | Entrada | Saída |
-|----------|---------|-------|
-| `POST /ai/analyze-inconsistencias` | Resultado de `/inconsistencias` | Análise narrativa + recomendações de correção |
-| `POST /ai/benchmark-insights` | Resultado de `/benchmark/run` | Interpretação dos resultados + hipóteses de causa |
-| `POST /ai/query-suggestions` | Cenário + métricas | Sugestões de otimização de query / índice |
+### POST /ai/analyze-inconsistencies
 
-Spec completa: [`specs/06-ai-integration-spec.md`](../specs/06-ai-integration-spec.md)
+Recebe a saída de `GET /inconsistencias` e retorna análise priorizada das inconsistências.
+
+```bash
+curl -X POST http://localhost:3000/ai/analyze-inconsistencies \
+  -H "Content-Type: application/json" \
+  -d "$(curl -s http://localhost:3000/inconsistencias)"
+```
+
+Resposta inclui: `severity_assessment`, `top_priorities[5]` (com `sql_hint`), `patterns_detected`, `next_steps`.
+
+### POST /ai/benchmark-insights
+
+Recebe a saída de `POST /benchmark/run` e retorna análise de tradeoff entre os bancos.
+
+```bash
+curl -X POST http://localhost:3000/ai/benchmark-insights \
+  -H "Content-Type: application/json" \
+  -d "$(curl -s -X POST http://localhost:3000/benchmark/run -H 'Content-Type: application/json' -d '{}')"
+```
+
+Resposta inclui: `executive_summary`, `tradeoff_analysis`, `optimization_suggestions[4]`, `cost_analysis`.
+
+### GET /ai/query-suggestions?scenario=B07
+
+Recebe um ID de cenário e retorna queries otimizadas para SQL Server e PostGIS.
+
+```bash
+curl "http://localhost:3000/ai/query-suggestions?scenario=B07"
+```
+
+Resposta inclui: `suggestions[]` com `current_query`, `optimized_query`, `explanation`, `estimated_improvement`.
+
+### Erros específicos dos endpoints AI
+
+| HTTP | Código | Causa |
+|------|--------|-------|
+| `500` | `AI_NOT_CONFIGURED` | `ANTHROPIC_API_KEY` não definida |
+| `429` | `AI_RATE_LIMITED` | Rate limit da API Claude (com `retry_after`) |
+| `502` | `AI_UPSTREAM_ERROR` | Claude API 5xx |
+| `500` | `AI_INVALID_RESPONSE` | Resposta não passou na validação Zod |
+| `504` | `AI_TIMEOUT` | Timeout > 30s |
+| `413` | `REQUEST_TOO_LARGE` | Body > 50kB |
+
+Todas as respostas AI incluem `_meta: { model, input_tokens, output_tokens }`.
 
 ---
 

@@ -205,8 +205,11 @@ This project uses Claude Code with a custom multi-agent setup simulating a real 
 
 | Doc | Description |
 |-----|-------------|
+| [docs/01-arquitetura.md](docs/01-arquitetura.md) | System architecture — layers, data flow, design decisions |
 | [docs/03-setup-geoserver.md](docs/03-setup-geoserver.md) | GeoServer setup + bbox bug fix |
-| [docs/04-api.md](docs/04-api.md) | REST API reference — endpoints, exemplos, erros |
+| [docs/04-api.md](docs/04-api.md) | REST API reference — all endpoints, examples, error codes |
+| [docs/05-benchmark.md](docs/05-benchmark.md) | Benchmark methodology + how to generate results |
+| [docs/06-ia.md](docs/06-ia.md) | AI integration — prompts, Zod schemas, error handling |
 
 ---
 
