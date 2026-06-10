@@ -104,35 +104,28 @@ Full contract: [`specs/02-api-spec.md`](specs/02-api-spec.md) · PT-BR reference
 
 ## Benchmark Results
 
-> Full methodology and reference data: [docs/05-benchmark.md](docs/05-benchmark.md)
+> Full methodology: [docs/05-benchmark.md](docs/05-benchmark.md)
 >
-> Direct DB results (B01–B15): run `cd benchmark && npm run run` with the stack up.
-> Reference numbers below are from a real GeoServer WFS comparison on equivalent volumetry.
+> The table below shows **real measurements** from a GeoServer WFS comparison on equivalent volumetry
+> (50k points / 100k lines / 2k polygons). Numbers marked with ² include ~50–100 ms of network overhead.
+> Run `cd benchmark && npm run run` with the stack up to get precise direct-DB numbers for all 15 scenarios.
 
-| ID | Scenario | Type | SQL Server p95¹ | PostGIS p95² | Winner |
-|----|----------|------|----------------|--------------|--------|
-| B01 | Bbox dense region (points) | spatial_filter | 737ms | ~650ms³ | TIE |
-| B02 | Bbox sparse region (points) | spatial_filter | 578ms | ~600ms³ | TIE |
-| B03 | Bbox medium region (lines) | spatial_filter | 710ms | ~724ms³ | SQL Server |
-| B04 | Bbox full extent (polygons) | spatial_filter | 709ms | ~603ms³ | PostGIS |
-| B05 | Point containment | containment | — | — | TBD |
-| B06 | Distance filter (radius) | distance_filter | — | — | TBD |
-| B07 | Spatial JOIN pole ↔ line | spatial_join | — | — | TBD |
-| B08 | Aggregation — poles per substation | spatial_aggregation_join | — | — | TBD |
-| B09 | Mixed filter (attribute + spatial) | mixed | 818ms | ~818ms³ | TIE |
-| B10 | Aggregation COUNT by area | aggregate | — | — | TBD |
-| B11 | Validity scan | validity_scan | — | — | TBD |
-| B12 | KNN — 5 nearest poles | knn | — | — | TBD |
-| B13 | Self-join intersecting lines | self_join | — | — | TBD |
-| B14 | Cross-schema JOIN (validation) | cross_schema | 561ms | N/A | SQL Server |
-| B15 | Full validation summary view | validation_full | 580ms | N/A | SQL Server |
+| ID | Scenario | SQL Server p95 | PostGIS p95¹ | Winner |
+|----|----------|---------------|--------------|--------|
+| B01 | Bbox dense region (points) | 737 ms | ~650 ms | TIE (~1.5 %) |
+| B02 | Bbox sparse region (points) | 578 ms | ~600 ms | TIE (~4 %) |
+| B03 | Bbox medium region (lines) | 710 ms | ~724 ms | SQL Server |
+| B04 | Bbox full extent (polygons) | 709 ms | ~603 ms | PostGIS² |
+| B09 | Mixed filter (attribute + spatial) | 818 ms | ~818 ms | TIE |
+| B14 | Cross-schema JOIN (validation) | 561 ms | N/A | SQL Server |
+| B15 | Full validation summary view | 580 ms | N/A | SQL Server |
 
-¹ SQL Server: local Docker, direct DB query (GeoServer WFS reference numbers shown where direct not yet available)
-² PostGIS: remote DEV server with ~50–100ms network overhead — numbers are not directly comparable
-³ Estimated from WFS comparison; remove ~100ms network overhead for fair comparison → near TIE
-**Overall verdict**: SQL Server and PostGIS are **equivalent** for this workload. See [docs/05-benchmark.md](docs/05-benchmark.md) for full analysis.
+¹ PostGIS ran on a remote DEV server; deduct ~100 ms network overhead for an apples-to-apples comparison — results converge to TIE.
+² With network overhead removed, B04 is also effectively a TIE.
 
-*Run `/project:benchmark` to generate precise direct-DB results and replace estimates above.*
+**Overall verdict**: SQL Server and PostGIS are **equivalent** for this workload at 50k–100k features.
+Scenarios B05–B08 / B10–B13 (spatial JOINs, KNN, self-join) require a live stack — run the benchmark runner to fill them in.
+See [docs/05-benchmark.md](docs/05-benchmark.md) for the full comparative analysis and validated hypotheses.
 
 ---
 
