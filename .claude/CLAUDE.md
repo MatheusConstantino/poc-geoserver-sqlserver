@@ -43,9 +43,20 @@ Synthetic electrical distribution network — state of Paraná, Brazil (bounding
 - `/project:sprint-status` — Check sprint progress against GitHub issues
 - `/project:qa [scope]` — Full QA checklist before merge/release
 
+## Branching Strategy (Git Flow)
+```
+master   ← production — protected, PRs only, auto-tag on every merge (v0.1.0, v0.2.0…)
+develop  ← integration — protected, PRs only, CI must pass
+feat/*   ← feature work → PR to develop
+fix/*    ← bug fixes    → PR to develop
+chore/*  ← infra/config → PR to develop (or master for urgent tooling)
+spec/*   ← spec writing → PR to develop
+```
+**Rule**: NEVER push directly to master or develop. Always PR. Tag is generated automatically on master merge.
+
 ## Coding Conventions
 - **Commits**: Conventional Commits — `feat:`, `fix:`, `docs:`, `chore:`, `perf:`, `test:`, `refactor:`
-- **Branches**: `spec/xxx` → specs | `feat/sprint-N-description` → features | `fix/description` → bugs
+- **Scope** (optional but preferred): `feat(sqlserver):`, `feat(api):`, `fix(geoserver):`, etc.
 - **Language**: Code and README in English; `docs/*.md` in PT-BR
 - **SQL**: ALL scripts must be idempotent (IF NOT EXISTS, DROP IF EXISTS, TRUNCATE before INSERT)
 - **Secrets**: NEVER hardcode passwords, API keys, or connection strings — always use env vars
