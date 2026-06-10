@@ -57,3 +57,12 @@ geoserver/data_dir/printing/
 tmp/
 temp/
 *.tmp
+
+# Windows crash dumps
+bash.exe.stackdump
+
+# Local research / reference data (never version)
+comparativo/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json

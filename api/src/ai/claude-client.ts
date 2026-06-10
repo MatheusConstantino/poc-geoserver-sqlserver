@@ -132,3 +132,9 @@ export async function ask<T>(
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+// ---------------------------------------------------------------------------
+/** Resets the Anthropic singleton. Only for unit tests — do not use in production. */
+export function __resetForTests(): void {
+  _client = null
+}

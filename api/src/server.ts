@@ -1,4 +1,5 @@
 import Fastify from 'fastify'
+import cors from '@fastify/cors'
 import { healthRoutes }         from './routes/health.js'
 import { inconsistenciasRoutes } from './routes/inconsistencias.js'
 import { benchmarkRoutes }       from './routes/benchmark.js'
@@ -8,6 +9,11 @@ const app = Fastify({
   logger: {
     level: process.env.LOG_LEVEL ?? 'info',
   },
+})
+
+// Plugins
+await app.register(cors, {
+  origin: process.env.CORS_ORIGIN ?? true,
 })
 
 // Routes
